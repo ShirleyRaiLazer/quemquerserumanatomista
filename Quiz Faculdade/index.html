@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quiz Anatomia - Duelo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        
+        /* Uso de 100dvh para lidar corretamente com a barra de endereços em celulares */
+        body { display: flex; height: 100vh; height: 100dvh; overflow: hidden; background-color: #1a1a1a; color: white; position: relative; transition: background-color 0.5s; }
+        
+        /* Telas Iniciais e Transições */
+        #tela-inicio, #tela-transicao {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 100;
+            overflow-y: auto; 
+        }
+        #tela-inicio { background-color: rgba(26, 26, 26, 0.95); }
+        #tela-transicao { background-color: #8e44ad; display: none; text-align: center; padding: 20px; z-index: 90;}
+        
+        #tela-inicio h1 { font-size: 4rem; margin-bottom: 20px; color: white; text-align: center; }
+        #tela-transicao h1 { font-size: 4rem; color: #f1c40f; margin-bottom: 20px; text-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
+        #tela-transicao h2 { font-size: 2rem; color: white; margin-bottom: 40px; line-height: 1.4; max-width: 800px;}
+        
+        /* Seletores e Botões de Controle */
+        .seletor-modo {
+            font-size: 1.5rem; padding: 15px; margin-bottom: 30px; border-radius: 10px;
+            background-color: #2f3542; color: white; border: 2px solid #f39c12; cursor: pointer;
+        }
+        #btn-iniciar {
+            padding: 25px 70px; font-size: 2.5rem; background-color: #f39c12;
+            color: white; border: none; border-radius: 15px; cursor: pointer;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.5); transition: transform 0.1s;
+        }
+        #btn-iniciar:active { transform: scale(0.95); }
+
+        /* Botão de Mutar Som */
+        #btn-mute {
+            position: fixed; top: 15px; right: 15px; z-index: 1000;
+            width: 50px; height: 50px; font-size: 1.5rem;
+            background-color: rgba(47, 53, 66, 0.8); color: white;
+            border: 2px solid #f39c12; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+        #btn-mute:active { transform: scale(0.9); }
+
+        /* Botões de Prontidão (Fases) */
+        .ready-container { display: flex; gap: 30px; margin-top: 20px; }
+        .btn-ready {
+            padding: 20px 40px; font-size: 1.5rem; font-weight: bold; border: none; border-radius: 10px;
+            cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        #btn-ready-1 { background-color: #c23616; color: white; }
+        #btn-ready-2 { background-color: #0097e6; color: white; }
+        .btn-ready.ativo { background-color: #2ed573 !important; opacity: 1; transform: scale(0.95); }
+
+        /* Cronômetro */
+        #timer-container {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background-color: #f39c12; color: white; font-size: 2rem; font-weight: bold;
+            padding: 10px 30px; border-radius: 50px; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        /* Botões de Ajuda - AJUSTADO PARA CORRIGIR O BUG MOBILE */
+        #container-ajuda {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: none; gap: 20px; z-index: 999; width: 100%; justify-content: center; padding: 0 10px;
+        }
+        .btn-ajuda {
+            padding: 15px 25px; font-size: 1.2rem; font-weight: bold; background-color: #9b59b6;
+            color: white; border: 2px solid white; border-radius: 10px; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.8); transition: transform 0.1s, opacity 0.3s;
+        }
+        .btn-ajuda:active { transform: scale(0.95); }
+        .btn-ajuda:disabled { opacity: 0.4; cursor: not-allowed; background-color: #555; }
+
+        /* Layout dos Jogadores */
+        .player-container {
+            flex: 1; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; padding: 20px; transition: background-color 0.3s; 
+            padding-bottom: 80px; overflow-y: auto; 
+        }
+        #player1 { background-color: #c23616; border-right: 3px solid #1a1a1a; }
+        #player2 { background-color: #0097e6; border-left: 3px solid #1a1a1a; }
+
+        /* Modificadores Dinâmicos */
+        .modo-solo #player2 { display: none !important; }
+        .modo-solo #player1 { border: none; background-color: #2f3542; }
+        
+        body.fase-3-active #player1 { background-color: rgba(194, 54, 22, 0.7); }
+        body.fase-3-active #player2 { background-color: rgba(0, 151, 230, 0.7); }
+        body.fase-3-active.modo-solo #player1 { background-color: rgba(47, 53, 66, 0.7); }
+
+        /* Textos e Imagens da Pergunta */
+        .score-title { font-size: 1.8rem; margin-bottom: 20px; font-weight: bold; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+        h2.q-title { font-size: 1.8rem; text-align: center; margin-bottom: 15px; min-height: 60px; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+        .question-image { max-height: 180px; max-width: 90%; border-radius: 10px; margin-bottom: 20px; display: none; box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
+
+        /* Botões de Resposta */
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 400px; }
+        button.opcao {
+            padding: 25px 10px; font-size: 1.1rem; font-weight: bold; background-color: #2f3542; color: white;
+            border: 2px solid rgba(255,255,255,0.1); border-radius: 10px; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4); transition: transform 0.1s, background-color 0.2s;
+        }
+        button.opcao:active:not(:disabled) { transform: scale(0.95); }
+        button.opcao:disabled { cursor: not-allowed; opacity: 0.6; }
+        .correct { background-color: #2ed573 !important; border-color: white; opacity: 1 !important; }
+        .wrong { background-color: #ff4757 !important; opacity: 0.7; }
+
+        /* Vídeo de Fundo Fase 3 */
+        #bg-video-final {
+            display: none; position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; object-fit: cover; z-index: -1;
+        }
+        
+        /* Contador da Ajuda */
+        .contador-ajuda {
+            font-size: 4rem; font-weight: bold; color: #ff4757; text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
+            margin-top: 20px; display: block;
+        }
+
+        /* 📱 RESPONSIVIDADE PARA CELULARES */
+        @media (max-width: 768px) {
+            #tela-inicio h1, #tela-transicao h1 { font-size: 2.5rem; }
+            #tela-transicao h2 { font-size: 1.2rem; margin-bottom: 20px; }
+            .seletor-modo { font-size: 1.1rem; width: 90%; }
+            #btn-iniciar { padding: 15px 40px; font-size: 1.8rem; }
+            .btn-ready { padding: 15px 20px; font-size: 1.2rem; }
+            .ready-container { flex-direction: column; gap: 15px; } 
+            
+            .options-grid { grid-template-columns: 1fr; gap: 10px; }
+            button.opcao { padding: 15px 10px; font-size: 1rem; }
+            
+            .score-title { font-size: 1.4rem; }
+            h2.q-title { font-size: 1.3rem; min-height: 40px; }
+            #timer-container { font-size: 1.5rem; padding: 8px 20px; }
+            
+            /* Aumentando o padding de baixo no mobile para a rolagem não bater nas ajudas */
+            .player-container { padding-top: 70px; padding-bottom: 120px; }
+            
+            #btn-mute { width: 45px; height: 45px; font-size: 1.2rem; top: 10px; right: 10px; }
+            
+            /* Ajuste fino nos botões de ajuda para telas menores */
+            #container-ajuda { bottom: 15px; gap: 10px; }
+            .btn-ajuda { font-size: 0.95rem; padding: 12px 10px; flex: 1; max-width: 180px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <button id="btn-mute" onclick="toggleMute()">🔊</button>
+
+    <audio id="audio-inicio-fim" loop><source src="quiz inicio.mp3" type="audio/mpeg"></audio>
+    <audio id="audio-fase-1-2" loop><source src="quiz fase 1.mp3" type="audio/mpeg"></audio>
+    <audio id="audio-fase-3" loop><source src="musica de suspense.mp3" type="audio/mpeg"></audio>
+    <audio id="audio-bonus" loop><source src="fase bonus.mp3" type="audio/mpeg"></audio>
+    <audio id="audio-ajuda"><source src="disk naty.mp3" type="audio/mpeg"></audio>
+
+    <video id="bg-video-final" autoplay loop muted playsinline>
+        <source src="palco.mp4" type="video/mp4">
+    </video>
+
+    <div id="tela-inicio">
+        <h1>Quem quer ser um Anatomista?</h1>
+        <p style="margin-bottom: 20px; font-size: 1rem; opacity: 0.8; text-align: center;">(Clique em qualquer lugar para ativar o som inicial)</p>
+        <select id="seletor-modo" class="seletor-modo">
+            <option value="equipes">Modo: Equipe x Equipe</option>
+            <option value="1v1">Modo: 1 vs 1</option>
+            <option value="solo">Modo: 1 Jogador (Treino)</option>
+        </select>
+        <button id="btn-iniciar">INICIAR JOGO</button>
+    </div>
+
+    <div id="tela-transicao">
+        <h1 id="titulo-transicao">⚠️ ATENÇÃO ⚠️</h1>
+        <h2 id="texto-transicao">Texto dinâmico aqui</h2>
+        <div class="ready-container" id="ready-container">
+            <button id="btn-ready-1" class="btn-ready">Vermelha: PRONTA</button>
+            <button id="btn-ready-2" class="btn-ready">Azul: PRONTA</button>
+        </div>
+    </div>
+
+    <div id="timer-container"><span id="timer-display">0</span>s</div>
+
+    <div id="container-ajuda">
+        <button id="btn-disk-naty" class="btn-ajuda" onclick="solicitarAjuda('naty')">📱 Chat Naty</button>
+        <button id="btn-universitarios" class="btn-ajuda" onclick="solicitarAjuda('universitarios')">🎓 Universitários</button>
+    </div>
+
+    <div id="player1" class="player-container">
+        <div class="score-title"><span id="label-p1">Equipe Vermelha</span>: <span id="pontos-1">0</span></div>
+        <img id="q-img-1" class="question-image" src="" alt="Imagem da Pergunta">
+        <h2 id="q-text-1" class="q-title">Carregando...</h2>
+        <div class="options-grid" id="options-1"></div>
+    </div>
+
+    <div id="player2" class="player-container">
+        <div class="score-title"><span id="label-p2">Equipe Azul</span>: <span id="pontos-2">0</span></div>
+        <img id="q-img-2" class="question-image" src="" alt="Imagem da Pergunta">
+        <h2 id="q-text-2" class="q-title">Carregando...</h2>
+        <div class="options-grid" id="options-2"></div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. BANCO DE PERGUNTAS 
+        // ==========================================
+        const perguntasFase1 = [
+            { pergunta: "Marque a opção INCORRETA acerca da classificação do músculo quanto à sua origem", imagem: "", respostas: ["Bíceps", "Tríceps", "Quadríceps", "Uníceps"], correta: "Uníceps", pontos: 1, fase: 1 },
+            { pergunta: "Dentre as funções do líquido sinovial, qual está INCORRETA?", imagem: "líquido sinovial.png", respostas: ["Lubrificar", "Nutrir", "Gerar ATP", "Amortecer"], correta: "Gerar ATP", pontos: 1, fase: 1 },
+            { pergunta: "Os músculos destacados pertencem aos?", imagem: "músculos dos membros inferiores.gif", respostas: ["Membros Inferiores", "Membros Superiores", "Tórax", "Cabeça"], correta: "Membros Inferiores", pontos: 1, fase: 1 },
+            { pergunta: "Que músculo é esse?", imagem: "sartório.jpeg", respostas: ["Sartório", "Reto Abdominal", "Flexor da Fáscia Lata", "Grácil"], correta: "Sartório", pontos: 1, fase: 1 },
+            { pergunta: "Movimento de?", imagem: "flexão de ombro.gif", respostas: ["Flexão de Ombro", "Extensão de Ombro", "Flexão de Cotovelo", "Extensão de Cotovelo"], correta: "Flexão de Ombro", pontos: 1, fase: 1 },
+            { pergunta: "Qual o músculo destacado?", imagem: "deltoides.gif", respostas: ["Deltoide", "Solear", "Trapézio", "Redondo"], correta: "Deltoide", pontos: 1, fase: 1 },
+            { pergunta: "Qual tendão é conhecido como Tendão de Aquiles?", imagem: "tendão.jpg", respostas: ["Tendão do Calcâneo", "Tendão da Patela", "Tendão do Bíceps", "Tendão do Gastrocnêmio"], correta: "Tendão do Calcâneo", pontos: 1, fase: 1 },
+            { pergunta: "Qual é o nome das duas porções do músculo esternocleidomastóideo?", imagem: "esternocleidomastoideo.gif", respostas: ["Esternal e Clavicular", "Esternal e Deltoidea", "Peitoral e Clavicular", "Peitoral e Escapular"], correta: "Esternal e Clavicular", pontos: 1, fase: 1 },
+            { pergunta: "Qual grupamento muscular está representado pela cor verde?", imagem: "quadriceps.jpg", respostas: ["Quadríceps femoral", "Bíceps femoral", "Adutor magno", "Sartório"], correta: "Quadríceps femoral", pontos: 1, fase: 1 },
+            { pergunta: "Qual o nome do músculo em destaque?", imagem: "bíceps braquial.jpeg", respostas: ["Bíceps braquial", "Bíceps femoral", "Adutor magno", "Braquiorradial"], correta: "Bíceps braquial", pontos: 1, fase: 1 },
+            { pergunta: "Movimento de _____ de Ombro", imagem: "abdução de ombro.gif", respostas: ["Flexão", "Extensão", "Adução", "Abdução"], correta: "Abdução", pontos: 1, fase: 1 }
+        ];
+
+        const perguntasFase2 = [
+            { pergunta: "Qual é a porção AZUL do músculo destacado?", imagem: "deltoides.gif", respostas: ["Porção Clavicular", "Porção Acromial", "Porção Espinal", "Porção Medial"], correta: "Porção Espinal", pontos: 2, fase: 2 },
+            { pergunta: "Qual o músculo destacado em VERDE?", imagem: "tibial anterior.png", respostas: ["Tibial Anterior", "Extensor Longo dos Dedos", "Extensor longo do Hálux", "Sóleo"], correta: "Tibial Anterior", pontos: 2, fase: 2 },
+            { pergunta: "Os tendões são responsáveis por conectar", imagem: "tendão.jpg", respostas: ["Osso com osso", "Músculo com Músculo", "Músculo com Osso", "Músculo com Menisco"], correta: "Músculo com Osso", pontos: 2, fase: 2 },
+            { pergunta: "Qual o músculo destacado?", imagem: "infraespinal.jpeg", respostas: ["Infraespinal", "Extensor Longo dos Dedos", "Deltoide Posterior", "Redondo maior"], correta: "Infraespinal", pontos: 2, fase: 2 },
+            { pergunta: "Rompimento no...?", imagem: "rompimento lca.gif", respostas: ["Ligamento Cruzado Anterior", "Ligamento Coracoumeral", "Tendão do Bíceps", "Esternocleidomastóideo"], correta: "Ligamento Cruzado Anterior", pontos: 2, fase: 2 },
+            { pergunta: "Que músculos são esses em destaque?", imagem: "gastrocnêmio.jpg", respostas: ["Gastrocnêmio", "Gastrointestinal", "Vasto medial", "Reto Femoral"], correta: "Gastrocnêmio", pontos: 2, fase: 2 },
+            { pergunta: "Qual músculo é antagonista na extensão de cotovelo?", imagem: "tríceps braquial.jpeg", respostas: ["Gastrocnêmio", "Bíceps Braquial", "Tríceps Braquial", "Reto Femoral"], correta: "Bíceps Braquial", pontos: 2, fase: 2 },
+            { pergunta: "Qual músculo é agonista na flexão de cotovelo?", imagem: "bíceps braquial 2.jpeg", respostas: ["Tríceps Braquial", "Bíceps Braquial", "Deltoide", "Peitoral Maior"], correta: "Bíceps Braquial", pontos: 2, fase: 2 },
+            { pergunta: "Como se classificam as articulações do crânio?", imagem: "suturas do crânio.jpg", respostas: ["Fibrosas (SINARTROSES)", "Cartilaginosas (ANFIARTROSES)", "Sinoviais (Diartroses)", "Grossas (BIARTROSES)"], correta: "Fibrosas (SINARTROSES)", pontos: 2, fase: 2 },
+            { pergunta: "Qual é a porção VERDE do músculo destacado?", imagem: "deltoides.gif", respostas: ["Porção Clavicular", "Porção Acromial", "Porção Espinal", "Porção De Torresmo"], correta: "Porção Acromial", pontos: 2, fase: 2 }
+        ];
+
+        const perguntasFase3 = [
+            
+  { 
+    pergunta: "Um paciente chega ao consultório após sofrer um trauma na lateral da perna. Ao avaliar os compartimentos musculares da região afetada, o médico precisa testar o grupo muscular mais externo. Entre as opções abaixo, qual estrutura muscular localiza-se mais lateralmente na perna?", 
+    imagem: "", 
+    respostas: ["Extensor dos dedos", "Extensor do Hálux", "Tibial anterior", "Músculo Fibular"], 
+    correta: "Músculo Fibular", 
+    pontos: 3, 
+    fase: 3 
+  },
+  { 
+    pergunta: "Um atleta de salto em distância sofreu uma contratura muscular súbita na região posterior da coxa e panturrilha. Sobre o músculo gastrocnêmio, quais são as suas origens anatômicas?", 
+    imagem: "", 
+    respostas: ["Côndilos do Fêmur", "Tíbia e Fíbula", "Calcâneo", "Íleo"], 
+    correta: "Côndilos do Fêmur", 
+    pontos: 3, 
+    fase: 3 
+  },
+  { 
+    pergunta: "Durante uma autópsia anatômica, os alunos removem a pele da região estudada e se deparam com um músculo superficial imenso, que recobre a maior parte da porção observada e se insere no úmero. Considerando a área de superfície de cobertura, qual destes músculos é classificado como o mais extenso do corpo humano?", 
+    imagem: "", 
+    respostas: ["Trapézio", "Bíceps Femural", "Tríceps", "Latíssimo do Dorso"], 
+    correta: "Latíssimo do Dorso", 
+    pontos: 3, 
+    fase: 3 
+  },
+  { 
+    pergunta: "Durante um treino intensivo, um atleta foca em exercícios que exigem a contração de um músculo caracterizado por possuir múltiplos ventres musculares dispostos em série e separados por interseções tendíneas. Qual destes músculos apresenta essa classificação poligástrica?", 
+    imagem: "", 
+    respostas: ["Reto Abdominal", "Bíceps Braquial", "Deltoide", "Peitoral Maior"], 
+    correta: "Reto Abdominal", 
+    pontos: 3, 
+    fase: 3 
+  },
+  { 
+    pergunta: "Um paciente comparece à fisioterapia incapaz de iniciar os primeiros 15 graus de elevação lateral do braço após uma lesão nervosa isolada, embora consiga completar o movimento se o braço for ajudado no início. Qual músculo do manguito rotador é o responsável específico por iniciar esse movimento de abdução?", 
+    imagem: "", 
+    respostas: ["Deltoide", "Supraespinal", "Infraespinal", "Coracobraquial"], 
+    correta: "Supraespinal", 
+    pontos: 3, 
+    fase: 3 
+  },
+  { 
+    pergunta: "Qual músculo da perna é o principal responsável pela dorsiflexão do tornozelo e, quando sofre paralisia, resulta na condição clínica conhecida como 'Pé Caído'?", 
+    imagem: "", 
+    respostas: ["Tibial Anterior", "Tibial Posterior", "Fibular Longo", "Gastrocnêmio"], 
+    correta: "Tibial Anterior", 
+    pontos: 3, 
+    fase: 3 
+  }
+       ];
+
+        const perguntaBonus = {
+            pergunta: "PERGUNTA BÔNUS: Qual músculo fica perto da 'gracinha'?", imagem: "grácil.jpeg", respostas: ["Bíceps", "Braquial", "Solear", "Grácil"], correta: "Grácil", pontos: 0.5, fase: 'bonus'
+        };
+
+        // ==========================================
+        // 2. VARIÁVEIS GERAIS E ÁUDIO
+        // ==========================================
+        let perguntasEmbaralhadas = [];
+        let perguntaAtualIndex = 0;
+        let jogoPausado = true; 
+        let tempoDecorrido = 0; 
+        let timerInterval;
+        let transicaoEmAndamento = false; 
+
+        let pontosEquipe1 = 0;
+        let pontosEquipe2 = 0;
+        let erroEquipe1 = false;
+        let erroEquipe2 = false;
+
+        let modoAtual = "equipes"; 
+        let p1Pronto = false;
+        let p2Pronto = false;
+
+        let ajudaNatyUsada = false;
+        let ajudaUnivUsada = false;
+        
+        let isMuted = false; 
+
+        const audios = {
+            inicioFim: document.getElementById('audio-inicio-fim'),
+            fase1_2: document.getElementById('audio-fase-1-2'),
+            fase3: document.getElementById('audio-fase-3'),
+            bonus: document.getElementById('audio-bonus'),
+            ajuda: document.getElementById('audio-ajuda')
+        };
+        let audioAtual = null;
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            Object.values(audios).forEach(audio => {
+                audio.muted = isMuted;
+            });
+            document.getElementById('bg-video-final').muted = true; 
+            document.getElementById('btn-mute').innerText = isMuted ? '🔇' : '🔊';
+        }
+
+        function trocarMusica(nomeMusica) {
+            Object.values(audios).forEach(audio => audio.pause());
+            if (nomeMusica && audios[nomeMusica]) {
+                audioAtual = audios[nomeMusica];
+                audioAtual.currentTime = 0;
+                audioAtual.volume = 0.5;
+                audioAtual.muted = isMuted; 
+                audioAtual.play().catch(e => console.log("Áudio bloqueado:", e));
+            }
+        }
+
+        document.body.addEventListener('click', function initAudio() {
+            if(perguntaAtualIndex === 0 && jogoPausado) {
+                if(audioAtual !== audios.inicioFim) trocarMusica('inicioFim');
+            }
+            document.body.removeEventListener('click', initAudio);
+        }, {once: true});
+
+        // ==========================================
+        // 3. FUNÇÕES DO JOGO
+        // ==========================================
+        function embaralhar(array) { return array.sort(() => Math.random() - 0.5); }
+
+        function configurarModo() {
+            modoAtual = document.getElementById('seletor-modo').value;
+            const lbl1 = document.getElementById('label-p1');
+            const lbl2 = document.getElementById('label-p2');
+            const btnR1 = document.getElementById('btn-ready-1');
+            const btnR2 = document.getElementById('btn-ready-2');
+
+            if (modoAtual === "solo") {
+                document.body.classList.add('modo-solo');
+                lbl1.innerText = "Jogador"; btnR1.innerText = "ESTOU PRONTO"; btnR2.style.display = "none";
+            } else if (modoAtual === "1v1") {
+                document.body.classList.remove('modo-solo');
+                lbl1.innerText = "Jogador 1"; lbl2.innerText = "Jogador 2";
+                btnR1.innerText = "J1: PRONTO"; btnR2.innerText = "J2: PRONTO"; btnR2.style.display = "block";
+            } else {
+                document.body.classList.remove('modo-solo');
+                lbl1.innerText = "Equipe Vermelha"; lbl2.innerText = "Equipe Azul";
+                btnR1.innerText = "Vermelha: PRONTA"; btnR2.innerText = "Azul: PRONTA"; btnR2.style.display = "block";
+            }
+        }
+
+        function iniciarJogo() {
+            configurarModo();
+            pontosEquipe1 = 0; pontosEquipe2 = 0;
+            document.getElementById('pontos-1').innerText = pontosEquipe1;
+            document.getElementById('pontos-2').innerText = pontosEquipe2;
+            document.getElementById('container-ajuda').style.display = 'none';
+
+            let f1 = embaralhar([...perguntasFase1]);
+            let f2 = embaralhar([...perguntasFase2]);
+            let f3 = embaralhar([...perguntasFase3]);
+            
+            perguntasEmbaralhadas = [...f1, ...f2, perguntaBonus, ...f3];
+            perguntaAtualIndex = 0;
+
+            trocarMusica('fase1_2');
+            carregarPergunta();
+        }
+
+        function avancarPergunta() {
+            perguntaAtualIndex++;
+            
+            if (perguntaAtualIndex < perguntasEmbaralhadas.length) {
+                let faseAnterior = perguntasEmbaralhadas[perguntaAtualIndex - 1].fase;
+                let proxFase = perguntasEmbaralhadas[perguntaAtualIndex].fase;
+
+                if (faseAnterior === 1 && proxFase === 2) {
+                    mostrarTelaTransicao("CHEGAMOS NA FASE 2!", "As perguntas agora valem <strong>2 PONTOS</strong>! Responda rápido e ganhe mais 0,5 ponto!");
+                } else if (faseAnterior === 2 && proxFase === 'bonus') {
+                    mostrarTelaTransicao("PERGUNTA BÔNUS", "A Pergunta Bônus vai começar! Ela vale <strong>0,5 PONTO</strong> para o grande desempate!");
+                    trocarMusica('bonus');
+                } else if (faseAnterior === 'bonus' && proxFase === 3) {
+                    let textoVencedor = "";
+                    if(modoAtual === "solo") {
+                        textoVencedor = `Você terminou as rodadas iniciais com ${pontosEquipe1} pontos.`;
+                    } else {
+                        if (pontosEquipe1 > pontosEquipe2) {
+                            textoVencedor = `A EQUIPE VERMELHA VENCEU O DUELO (${pontosEquipe1} a ${pontosEquipe2})! 🏆`;
+                        } else if (pontosEquipe2 > pontosEquipe1) {
+                            textoVencedor = `A EQUIPE AZUL VENCEU O DUELO (${pontosEquipe2} a ${pontosEquipe1})! 🏆`;
+                            pontosEquipe1 = pontosEquipe2; 
+                            document.getElementById('pontos-1').innerText = pontosEquipe1;
+                        } else {
+                            textoVencedor = `O DUELO TERMINOU EM EMPATE (${pontosEquipe1} a ${pontosEquipe2})! 🤝`;
+                        }
+                    }
+
+                    let textoTrans = `${textoVencedor}<br><br><strong>FASE FINAL</strong><br>`;
+                    if (modoAtual !== "solo") {
+                        textoTrans += "A equipe vencedora deve escolher <strong>APENAS UMA PESSOA</strong> para representar o time.<br>";
+                    }
+                    textoTrans += "As perguntas valem <strong>3 PONTOS</strong> e <strong>o Chat Naty e a Ajuda dos Universitários foram liberadas!</strong>";
+
+                    mostrarTelaTransicao("FIM DO JOGO DE EQUIPES", textoTrans);
+                    
+                    document.body.classList.add('modo-solo');
+                    document.getElementById('label-p1').innerText = modoAtual === "solo" ? "Jogador" : "Representante";
+                    document.getElementById('btn-ready-2').style.display = "none";
+                    document.getElementById('btn-ready-1').innerText = "ESTOU PRONTO";
+                    modoAtual = "solo"; 
+
+                    document.getElementById('container-ajuda').style.display = 'flex';
+                    trocarMusica('fase3');
+                    document.getElementById('bg-video-final').style.display = 'block';
+                    document.body.classList.add('fase-3-active');
+
+                } else {
+                    carregarPergunta();
+                }
+            } else {
+                finalizarJogo();
+            }
+        }
+
+        // ==========================================
+        // SISTEMA DE AJUDA E TRANSIÇÃO
+        // ==========================================
+        function solicitarAjuda(tipo) {
+            if (jogoPausado) return; 
+            
+            if (tipo === 'naty' && !ajudaNatyUsada) {
+                ajudaNatyUsada = true;
+                document.getElementById('btn-disk-naty').disabled = true;
+                dispararEventoAjuda("A Naty está analisando a sua pergunta...");
+            } else if (tipo === 'universitarios' && !ajudaUnivUsada) {
+                ajudaUnivUsada = true;
+                document.getElementById('btn-universitarios').disabled = true;
+                dispararEventoAjuda("Os Universitários estão debatendo...");
+            }
+        }
+
+        function dispararEventoAjuda(mensagem) {
+            jogoPausado = true;
+            clearInterval(timerInterval); 
+            
+            let musicaAnterior = audioAtual; 
+            trocarMusica('ajuda'); 
+
+            document.getElementById('titulo-transicao').innerText = "AJUDA ACIONADA!";
+            document.getElementById('ready-container').style.display = 'none'; 
+            document.getElementById('tela-transicao').style.display = 'flex';
+            
+            let tempoAjuda = 15;
+            const atualizarTexto = () => {
+                document.getElementById('texto-transicao').innerHTML = `${mensagem}<br><span class="contador-ajuda">${tempoAjuda}s</span>`;
+            };
+            
+            atualizarTexto(); 
+            let countdownInterval = setInterval(() => {
+                tempoAjuda--;
+                if (tempoAjuda > 0) {
+                    atualizarTexto();
+                } else {
+                    clearInterval(countdownInterval);
+                    document.getElementById('tela-transicao').style.display = 'none';
+                    document.getElementById('ready-container').style.display = 'flex'; 
+                    
+                    if (musicaAnterior) {
+                        audioAtual = musicaAnterior;
+                        Object.values(audios).forEach(a => a.pause());
+                        audioAtual.play();
+                    }
+
+                    jogoPausado = false;
+                    timerInterval = setInterval(() => {
+                        tempoDecorrido++; 
+                        document.getElementById('timer-display').innerText = tempoDecorrido;
+                    }, 1000);
+                }
+            }, 1000);
+        }
+
+        function mostrarTelaTransicao(titulo, texto) {
+            jogoPausado = true; clearInterval(timerInterval); 
+            p1Pronto = false; p2Pronto = false; transicaoEmAndamento = false; 
+            
+            const btn1 = document.getElementById('btn-ready-1');
+            const btn2 = document.getElementById('btn-ready-2');
+            btn1.classList.remove('ativo'); btn2.classList.remove('ativo');
+
+            document.getElementById('titulo-transicao').innerText = titulo;
+            document.getElementById('texto-transicao').innerHTML = texto;
+            document.getElementById('tela-transicao').style.display = 'flex'; 
+        }
+
+        function checarInicioRodada() {
+            if (transicaoEmAndamento) return; 
+            if (modoAtual === "solo") {
+                if(p1Pronto) iniciarRodadaTransicao();
+            } else {
+                if(p1Pronto && p2Pronto) iniciarRodadaTransicao();
+            }
+        }
+
+        function iniciarRodadaTransicao() {
+            transicaoEmAndamento = true; 
+            setTimeout(() => {
+                document.getElementById('tela-transicao').style.display = 'none'; 
+                transicaoEmAndamento = false; 
+                carregarPergunta(); 
+            }, 500);
+        }
+
+        document.getElementById('btn-ready-1').addEventListener('click', function() {
+            if (p1Pronto) return; 
+            p1Pronto = true; this.classList.add('ativo'); checarInicioRodada();
+        });
+        document.getElementById('btn-ready-2').addEventListener('click', function() {
+            if (p2Pronto) return; 
+            p2Pronto = true; this.classList.add('ativo'); checarInicioRodada();
+        });
+
+        // ==========================================
+        // FLUXO PRINCIPAL
+        // ==========================================
+        function gerenciarTimer() {
+            clearInterval(timerInterval); tempoDecorrido = 0; 
+            document.getElementById('timer-display').innerText = tempoDecorrido;
+            timerInterval = setInterval(() => {
+                tempoDecorrido++; 
+                document.getElementById('timer-display').innerText = tempoDecorrido;
+            }, 1000);
+        }
+
+        function carregarPergunta() {
+            if (perguntaAtualIndex >= perguntasEmbaralhadas.length) {
+                finalizarJogo(); return;
+            }
+
+            erroEquipe1 = false; erroEquipe2 = false; jogoPausado = false;
+            const q = perguntasEmbaralhadas[perguntaAtualIndex];
+            gerenciarTimer(); 
+
+            const loopMax = modoAtual === "solo" ? 1 : 2;
+            for (let i = 1; i <= loopMax; i++) {
+                document.getElementById(`q-text-${i}`).innerText = q.pergunta;
+                const imgElement = document.getElementById(`q-img-${i}`);
+                if (q.imagem !== "" && q.imagem !== undefined) {
+                    imgElement.src = q.imagem; imgElement.style.display = "block"; 
+                } else {
+                    imgElement.style.display = "none";  
+                }
+                renderizarBotoes(i, q);
+            }
+        }
+
+        function renderizarBotoes(playerNum, qDados) {
+            const container = document.getElementById(`options-${playerNum}`);
+            container.innerHTML = ""; 
+            const respostasEmbaralhadas = embaralhar([...qDados.respostas]);
+
+            respostasEmbaralhadas.forEach(resposta => {
+                const btn = document.createElement("button");
+                btn.classList.add("opcao"); btn.innerText = resposta;
+                btn.onclick = () => verificarResposta(playerNum, resposta, btn, qDados);
+                container.appendChild(btn);
+            });
+        }
+
+        function verificarResposta(playerNum, respostaEscolhida, botaoClicado, qDados) {
+            if (jogoPausado) return;
+
+            if (respostaEscolhida === qDados.correta) {
+                jogoPausado = true; clearInterval(timerInterval); 
+                botaoClicado.classList.add("correct");
+                
+                let pontosFinais = qDados.pontos;
+                let ganhouBonusVelocidade = false;
+
+                if ((qDados.fase === 2 || qDados.fase === 3) && tempoDecorrido < 5) {
+                    pontosFinais += 0.5; ganhouBonusVelocidade = true;
+                }
+                
+                if (playerNum === 1) {
+                    pontosEquipe1 += pontosFinais;
+                    document.getElementById('pontos-1').innerText = pontosEquipe1 + (ganhouBonusVelocidade ? " (+0.5 Rápido!)" : "");
+                } else {
+                    pontosEquipe2 += pontosFinais;
+                    document.getElementById('pontos-2').innerText = pontosEquipe2 + (ganhouBonusVelocidade ? " (+0.5 Rápido!)" : "");
+                }
+
+                const playerContainer = document.getElementById(`player${playerNum}`);
+                const corOriginal = playerContainer.style.backgroundColor;
+                playerContainer.style.backgroundColor = "#2ed573";
+
+                setTimeout(() => {
+                    playerContainer.style.backgroundColor = corOriginal; 
+                    document.getElementById('pontos-1').innerText = pontosEquipe1;
+                    document.getElementById('pontos-2').innerText = pontosEquipe2;
+                    avancarPergunta(); 
+                }, 2000);
+
+            } else {
+                botaoClicado.classList.add("wrong");
+                
+                const botoesDaEquipe = document.getElementById(`options-${playerNum}`).querySelectorAll('.opcao');
+                botoesDaEquipe.forEach(btn => btn.disabled = true);
+
+                if (playerNum === 1) erroEquipe1 = true;
+                if (playerNum === 2) erroEquipe2 = true;
+
+                const todosErraram = modoAtual === "solo" ? erroEquipe1 : (erroEquipe1 && erroEquipe2);
+
+                if (todosErraram) {
+                    jogoPausado = true; clearInterval(timerInterval);
+                    
+                    const loopMax = modoAtual === "solo" ? 1 : 2;
+                    for (let i = 1; i <= loopMax; i++) {
+                        const todosBotoes = document.getElementById(`options-${i}`).querySelectorAll('.opcao');
+                        todosBotoes.forEach(btn => {
+                            if (btn.innerText === qDados.correta) btn.classList.add("correct");
+                        });
+                    }
+
+                    setTimeout(() => { avancarPergunta(); }, 2500);
+                }
+            }
+        }
+
+        function finalizarJogo() {
+            trocarMusica('inicioFim'); 
+            document.getElementById('container-ajuda').style.display = 'none';
+
+            let mensagemFinal = `Fim de Jogo! 🏆<br>O Representante fechou o jogo com ${pontosEquipe1} pontos.`;
+            let corVencedora = "#2f3542";
+
+            document.body.innerHTML = `
+                <div style='margin:auto; text-align: center; background-color: ${corVencedora}; padding: 50px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 200; width: 90%; max-width: 600px;'>
+                    <h1 style='font-size: 3rem; margin-bottom: 20px; text-shadow: 2px 2px 5px rgba(0,0,0,0.5);'>${mensagemFinal}</h1>
+                    <button onclick='location.reload()' style='margin-top: 40px; padding: 20px 40px; font-size: 1.5rem; font-weight: bold; background-color: #f39c12; border: none; border-radius: 15px; cursor: pointer; color: white; box-shadow: 0 5px 10px rgba(0,0,0,0.5);'>Jogar Novamente</button>
+                </div>
+            `;
+        }
+
+        const btnIniciar = document.getElementById('btn-iniciar');
+        const acaoIniciar = (event) => {
+            if(event) event.preventDefault();
+            document.getElementById('tela-inicio').style.display = 'none';
+            iniciarJogo();
+        };
+
+        btnIniciar.addEventListener('click', acaoIniciar);
+        btnIniciar.addEventListener('touchstart', acaoIniciar, { passive: false });
+
+    </script>
+</body>
+</html>
