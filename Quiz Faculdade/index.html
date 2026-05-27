@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Quiz Anatomia - Duelo</title>
+    
+    <!-- SCRIPT PRINCIPAL DO GOOGLE ADSENSE (Substitua SEU_ID_AQUI pelo seu ID de publisher) -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-SEU_ID_AQUI" crossorigin="anonymous"></script>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
         
@@ -67,9 +71,10 @@
             padding: 10px 30px; border-radius: 50px; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
 
-        /* Botões de Ajuda - AJUSTADO PARA CORRIGIR O BUG MOBILE */
+        /* Botões de Ajuda - AJUSTADO PARA O BANNER DO RODAPÉ */
         #container-ajuda {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            position: fixed; bottom: 70px; /* Alterado de 20px para 70px para dar espaço ao banner */
+            left: 50%; transform: translateX(-50%);
             display: none; gap: 20px; z-index: 999; width: 100%; justify-content: center; padding: 0 10px;
         }
         .btn-ajuda {
@@ -84,7 +89,8 @@
         .player-container {
             flex: 1; display: flex; flex-direction: column; justify-content: center;
             align-items: center; padding: 20px; transition: background-color 0.3s; 
-            padding-bottom: 80px; overflow-y: auto; 
+            padding-bottom: 100px; /* Aumentado para a rolagem não ficar sob o anúncio */
+            overflow-y: auto; 
         }
         #player1 { background-color: #c23616; border-right: 3px solid #1a1a1a; }
         #player2 { background-color: #0097e6; border-left: 3px solid #1a1a1a; }
@@ -126,6 +132,19 @@
             margin-top: 20px; display: block;
         }
 
+        /* NOVO: CSS DO ANÚNCIO FIXO NO RODAPÉ */
+        #ad-rodape {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50px; 
+            z-index: 1000;
+            background-color: #1a1a1a;
+            text-align: center;
+            border-top: 1px solid #333;
+        }
+
         /* 📱 RESPONSIVIDADE PARA CELULARES */
         @media (max-width: 768px) {
             #tela-inicio h1, #tela-transicao h1 { font-size: 2.5rem; }
@@ -142,13 +161,13 @@
             h2.q-title { font-size: 1.3rem; min-height: 40px; }
             #timer-container { font-size: 1.5rem; padding: 8px 20px; }
             
-            /* Aumentando o padding de baixo no mobile para a rolagem não bater nas ajudas */
-            .player-container { padding-top: 70px; padding-bottom: 120px; }
+            /* Aumentando o padding de baixo no mobile para a rolagem não bater nas ajudas e no banner */
+            .player-container { padding-top: 70px; padding-bottom: 150px; }
             
             #btn-mute { width: 45px; height: 45px; font-size: 1.2rem; top: 10px; right: 10px; }
             
-            /* Ajuste fino nos botões de ajuda para telas menores */
-            #container-ajuda { bottom: 15px; gap: 10px; }
+            /* Ajuste fino nos botões de ajuda para telas menores (considerando o ad no rodapé) */
+            #container-ajuda { bottom: 60px; gap: 10px; }
             .btn-ajuda { font-size: 0.95rem; padding: 12px 10px; flex: 1; max-width: 180px; text-align: center; }
         }
     </style>
@@ -185,6 +204,18 @@
             <button id="btn-ready-1" class="btn-ready">Vermelha: PRONTA</button>
             <button id="btn-ready-2" class="btn-ready">Azul: PRONTA</button>
         </div>
+
+        <!-- 1. BLOCO DE ANÚNCIO (TELA DE TRANSIÇÃO) -->
+        <div style="margin-top: 30px; min-width: 300px; min-height: 250px; display: flex; justify-content: center;">
+            <!-- Insira o código da sua tag AdSense aqui -->
+            <ins class="adsbygoogle"
+                 style="display:inline-block;width:300px;height:250px"
+                 data-ad-client="ca-pub-SEU_ID_AQUI"
+                 data-ad-slot="ID_DO_BLOCO"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+        </div>
     </div>
 
     <div id="timer-container"><span id="timer-display">0</span>s</div>
@@ -206,6 +237,20 @@
         <img id="q-img-2" class="question-image" src="" alt="Imagem da Pergunta">
         <h2 id="q-text-2" class="q-title">Carregando...</h2>
         <div class="options-grid" id="options-2"></div>
+    </div>
+
+    <!-- 2. BLOCO DE ANÚNCIO (RODAPÉ FIXO) -->
+    <div id="ad-rodape">
+        <!-- Insira o código da sua tag AdSense de Banner aqui -->
+        <ins class="adsbygoogle"
+             style="display:block; width:100%; height:50px;"
+             data-ad-client="ca-pub-SEU_ID_AQUI"
+             data-ad-slot="ID_DO_BLOCO"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
     </div>
 
     <script>
